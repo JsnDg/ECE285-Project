@@ -43,6 +43,8 @@ def create_modules(module_defs):
                 modules.add_module(f"batch_norm_{module_i}", nn.BatchNorm2d(filters, momentum=0.9, eps=1e-5))
             if module_def["activation"] == "leaky":
                 modules.add_module(f"leaky_{module_i}", nn.LeakyReLU(0.1))
+            if module_def["activation"] == "elu":
+                modules.add_module(f"leaky_{module_i}", nn.ELU())
 
         elif module_def["type"] == "maxpool":
             kernel_size = int(module_def["size"])
@@ -106,7 +108,7 @@ class EmptyLayer(nn.Module):
 class YOLOLayer(nn.Module):
     """Detection layer"""
 
-    def __init__(self, anchors, num_classes, img_dim=416):
+    def __init__(self, anchors, num_classes, loss_mode = 'modified', img_dim=416):
         super(YOLOLayer, self).__init__()
         self.anchors = anchors
         self.num_anchors = len(anchors)
@@ -119,6 +121,7 @@ class YOLOLayer(nn.Module):
         self.metrics = {}
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
+        self.loss_mode = loss_mode
 
     def compute_grid_offsets(self, grid_size, cuda=True):
         self.grid_size = grid_size
@@ -132,7 +135,7 @@ class YOLOLayer(nn.Module):
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
 
-    def forward(self, x, targets=None, img_dim=None):
+    def forward(self, x, targets=None, loss_mode = 'modified', img_dim=None):
 
         # Tensors for cuda support
         FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
@@ -189,14 +192,26 @@ class YOLOLayer(nn.Module):
             )
 
             # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
-            loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
-            loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
-            loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
-            loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
-            loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
-            loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
-            loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
-            loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
+            if self.loss_mode is not 'modified':
+                loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
+                loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
+                loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
+                loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
+                loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
+                loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
+                loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
+                loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
+            
+            else:
+                loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
+                loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
+                loss_w = self.mse_loss(torch.sqrt(w[obj_mask]), torch.sqrt(tw[obj_mask]))
+                loss_h = self.mse_loss(torch.sqrt(h[obj_mask]), torch.sqrt(th[obj_mask]))
+                loss_conf_obj = self.mse_loss(pred_conf[obj_mask], tconf[obj_mask])
+                loss_conf_noobj = self.mse_loss(pred_conf[noobj_mask], tconf[noobj_mask])
+                loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
+                loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
+              
             total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
             # Metrics
@@ -234,7 +249,7 @@ class YOLOLayer(nn.Module):
 class Darknet(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, img_size=416):
+    def __init__(self, config_path, loss_mode = 'original', img_size=416):
         super(Darknet, self).__init__()
         self.module_defs = parse_model_config(config_path)
         self.hyperparams, self.module_list = create_modules(self.module_defs)
@@ -242,6 +257,7 @@ class Darknet(nn.Module):
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
+        self.loss_mode = loss_mode
 
     def forward(self, x, targets=None):
         img_dim = x.shape[2]
@@ -256,7 +272,7 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets, img_dim)
+                x, layer_loss = module[0](x, targets, self.loss_mode, img_dim)
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
