@@ -157,6 +157,8 @@ class YOLOLayer(nn.Module):
         y = torch.sigmoid(prediction[..., 1])  # Center y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
+        print("w = ", w)
+        print("h = ", h)
         if self.loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
             pred_cls = prediction[..., 5:] # Cls pred
@@ -261,6 +263,12 @@ class Darknet(nn.Module):
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
         self.loss_mode = loss_mode
+        
+        if self.loss_mode is "modified":
+            print("The loss mode is modified")
+        else:
+            print("The loss mode is unmodified")
+        
 
     def forward(self, x, targets=None):
         img_dim = x.shape[2]
