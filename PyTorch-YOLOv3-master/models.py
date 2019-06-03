@@ -157,8 +157,6 @@ class YOLOLayer(nn.Module):
         y = torch.sigmoid(prediction[..., 1])  # Center y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
-        w[w < 0] = 0
-        h[h < 0] = 0
         
         if self.loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
@@ -202,8 +200,8 @@ class YOLOLayer(nn.Module):
             if self.loss_mode is "modified":
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
-                loss_w = self.mse_loss(torch.sqrt(w[obj_mask]), torch.sqrt(tw[obj_mask]))
-                loss_h = self.mse_loss(torch.sqrt(h[obj_mask]), torch.sqrt(th[obj_mask]))
+                loss_w = self.mse_loss(torch.sqrt(torch.clamp(w[obj_mask], min = 0)), torch.sqrt(tw[obj_mask]))
+                loss_h = self.mse_loss(torch.sqrt(torch.clamp(h[obj_mask], min = 0)), torch.sqrt(th[obj_mask]))
                 loss_conf_obj = self.mse_loss(pred_conf[obj_mask], tconf[obj_mask])
                 loss_conf_noobj = self.mse_loss(pred_conf[noobj_mask], tconf[noobj_mask])
                 loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
