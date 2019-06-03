@@ -160,7 +160,7 @@ class YOLOLayer(nn.Module):
         if loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
             pred_cls = prediction[..., 5:] # Cls pred
-        else:
+        elif loss_mode is "unmodified":
             pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
             pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
 
@@ -205,7 +205,7 @@ class YOLOLayer(nn.Module):
                 loss_conf_noobj = self.mse_loss(pred_conf[noobj_mask], tconf[noobj_mask])
                 loss_conf = self.obj_scale * loss_conf_obj + 0.5 * loss_conf_noobj
                 loss_cls = self.mse_loss(pred_cls[obj_mask], tcls[obj_mask])
-            else:
+            elif loss_mode is "unmodified" :
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
                 loss_w = self.mse_loss(torch.sqrt(torch.clamp(w[obj_mask], min = 0)), torch.sqrt(torch.clamp(tw[obj_mask], min = 0)))
@@ -264,7 +264,7 @@ class Darknet(nn.Module):
         
         if self.loss_mode is "modified":
             print("The loss mode is modified")
-        else:
+        elif self.loss_mode is "unmodified":
             print("The loss mode is unmodified")
         
 
