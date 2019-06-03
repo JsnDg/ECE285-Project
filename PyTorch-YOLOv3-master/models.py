@@ -108,7 +108,7 @@ class EmptyLayer(nn.Module):
 class YOLOLayer(nn.Module):
     """Detection layer"""
 
-    def __init__(self, anchors, num_classes, loss_mode = 'modified', img_dim=416):
+    def __init__(self, anchors, num_classes, loss_mode = "unmodified", img_dim=416):
         super(YOLOLayer, self).__init__()
         self.anchors = anchors
         self.num_anchors = len(anchors)
@@ -135,7 +135,7 @@ class YOLOLayer(nn.Module):
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
 
-    def forward(self, x, targets=None, loss_mode = "modified", img_dim=None):
+    def forward(self, x, targets=None, img_dim=None):
 
         # Tensors for cuda support
         FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
@@ -160,7 +160,7 @@ class YOLOLayer(nn.Module):
         if self.loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
             pred_cls = prediction[..., 5:] # Cls pred
-        else:    
+        else:
             pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
             pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
 
@@ -275,7 +275,7 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets, self.loss_mode, img_dim)
+                x, layer_loss = module[0](x, targets, img_dim)
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
