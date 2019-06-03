@@ -117,7 +117,7 @@ class YOLOLayer(nn.Module):
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
         self.obj_scale = 1
-        self.noobj_scale = 100
+        self.noobj_scale = 100 if loss_mode is "unmodified" else 0.5
         self.metrics = {}
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
@@ -155,8 +155,11 @@ class YOLOLayer(nn.Module):
         # Get outputs
         x = torch.sigmoid(prediction[..., 0])  # Center x
         y = torch.sigmoid(prediction[..., 1])  # Center y
-        w = torch.abs(prediction[..., 2])  # Width
-        h = torch.abs(prediction[..., 3])  # Height
+        w = prediction[..., 2]  # Width
+        h = prediction[..., 3]  # Height
+        w[w < 0] = 0
+        h[h < 0] = 0
+        
         if self.loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
             pred_cls = prediction[..., 5:] # Cls pred
