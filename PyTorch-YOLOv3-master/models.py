@@ -76,7 +76,7 @@ def create_modules(module_defs):
             num_classes = int(module_def["classes"])
             img_size = int(hyperparams["height"])
             # Define detection layer
-            yolo_layer = YOLOLayer(anchors, num_classes, loss_mode, img_size)
+            yolo_layer = YOLOLayer(anchors, num_classes, img_size)
             modules.add_module(f"yolo_{module_i}", yolo_layer)
         # Register module list and number of output filters
         module_list.append(modules)
@@ -108,7 +108,7 @@ class EmptyLayer(nn.Module):
 class YOLOLayer(nn.Module):
     """Detection layer"""
 
-    def __init__(self, anchors, num_classes, loss_mode = "unmodified", img_dim=416):
+    def __init__(self, anchors, num_classes, img_dim=416):
         super(YOLOLayer, self).__init__()
         self.anchors = anchors
         self.num_anchors = len(anchors)
@@ -121,7 +121,6 @@ class YOLOLayer(nn.Module):
         self.metrics = {}
         self.img_dim = img_dim
         self.grid_size = 0  # grid size
-        self.loss_mode = loss_mode
 
     def compute_grid_offsets(self, grid_size, cuda=True):
         self.grid_size = grid_size
@@ -135,7 +134,7 @@ class YOLOLayer(nn.Module):
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
 
-    def forward(self, x, targets=None, img_dim=None):
+    def forward(self, x, targets=None, img_dim=None, loss_mode):
 
         # Tensors for cuda support
         FloatTensor = torch.cuda.FloatTensor if x.is_cuda else torch.FloatTensor
@@ -158,7 +157,7 @@ class YOLOLayer(nn.Module):
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
         
-        if self.loss_mode is "modified":
+        if loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
             pred_cls = prediction[..., 5:] # Cls pred
         else:
@@ -197,7 +196,7 @@ class YOLOLayer(nn.Module):
             )
 
             # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
-            if self.loss_mode is "modified":
+            if loss_mode is "modified":
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
                 loss_w = self.mse_loss(torch.sqrt(torch.clamp(w[obj_mask], min = 0)), torch.sqrt(torch.clamp(tw[obj_mask], min = 0)))
@@ -282,7 +281,7 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets, img_dim)
+                x, layer_loss = module[0](x, targets, img_dim, self.loss_mode)
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
