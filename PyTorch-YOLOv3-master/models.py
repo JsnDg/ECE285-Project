@@ -202,8 +202,6 @@ class YOLOLayer(nn.Module):
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
                 loss_w = self.mse_loss(torch.sqrt(torch.clamp(w[obj_mask], min = 0)), torch.sqrt(torch.clamp(tw[obj_mask], min = 0)))
                 loss_h = self.mse_loss(torch.sqrt(torch.clamp(h[obj_mask], min = 0)), torch.sqrt(torch.clamp(th[obj_mask], min = 0)))
-                print('loss_w = ', loss_w)
-                print('loss_h = ', loss_h)
                 loss_conf_obj = self.mse_loss(pred_conf[obj_mask], tconf[obj_mask])
                 loss_conf_noobj = self.mse_loss(pred_conf[noobj_mask], tconf[noobj_mask])
                 loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
@@ -284,7 +282,7 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets, img_dim)
+                x, layer_loss = module[0](x, targets, self.loss_mode, img_dim)
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
