@@ -155,10 +155,8 @@ class YOLOLayer(nn.Module):
         # Get outputs
         x = torch.sigmoid(prediction[..., 0])  # Center x
         y = torch.sigmoid(prediction[..., 1])  # Center y
-        w = prediction[..., 2]  # Width
-        h = prediction[..., 3]  # Height
-        print("w = ", w)
-        print("h = ", h)
+        w = torch.abs(prediction[..., 2])  # Width
+        h = torch.abs(prediction[..., 3])  # Height
         if self.loss_mode is "modified":
             pred_conf = prediction[..., 4] # Conf
             pred_cls = prediction[..., 5:] # Cls pred
