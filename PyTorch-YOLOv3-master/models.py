@@ -157,8 +157,12 @@ class YOLOLayer(nn.Module):
         y = torch.sigmoid(prediction[..., 1])  # Center y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
-        pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
-        pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
+        if self.loss_mode is "modified":
+            pred_conf = prediction[..., 4] # Conf
+            pred_cls = prediction[..., 5:] # Cls pred
+        else:    
+            pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
+            pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
@@ -192,17 +196,7 @@ class YOLOLayer(nn.Module):
             )
 
             # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
-            if self.loss_mode is not 'modified':
-                loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
-                loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
-                loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
-                loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
-                loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
-                loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
-                loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
-                loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
-            
-            else:
+            if self.loss_mode is "modified":
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
                 loss_w = self.mse_loss(torch.sqrt(w[obj_mask]), torch.sqrt(tw[obj_mask]))
@@ -211,6 +205,16 @@ class YOLOLayer(nn.Module):
                 loss_conf_noobj = self.mse_loss(pred_conf[noobj_mask], tconf[noobj_mask])
                 loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
                 loss_cls = self.mse_loss(pred_cls[obj_mask], tcls[obj_mask])
+            
+            else:
+                loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
+                loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
+                loss_w = self.mse_loss(w[obj_mask], tw[obj_mask])
+                loss_h = self.mse_loss(h[obj_mask], th[obj_mask])
+                loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
+                loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
+                loss_conf = self.obj_scale * loss_conf_obj + self.noobj_scale * loss_conf_noobj
+                loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
               
             total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
