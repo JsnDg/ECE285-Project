@@ -156,13 +156,8 @@ class YOLOLayer(nn.Module):
         y = torch.sigmoid(prediction[..., 1])  # Center y
         w = prediction[..., 2]  # Width
         h = prediction[..., 3]  # Height
-        
-        if loss_mode is "modified":
-            pred_conf = prediction[..., 4] # Conf
-            pred_cls = prediction[..., 5:] # Cls pred
-        elif loss_mode is "unmodified":
-            pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
-            pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
+        pred_conf = torch.sigmoid(prediction[..., 4])  # Conf
+        pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
 
         # If grid size does not match current we compute new offsets
         if grid_size != self.grid_size:
