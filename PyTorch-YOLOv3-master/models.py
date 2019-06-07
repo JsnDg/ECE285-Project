@@ -133,6 +133,10 @@ class YOLOLayer(nn.Module):
         self.scaled_anchors = FloatTensor([(a_w / self.stride, a_h / self.stride) for a_w, a_h in self.anchors])
         self.anchor_w = self.scaled_anchors[:, 0:1].view((1, self.num_anchors, 1, 1))
         self.anchor_h = self.scaled_anchors[:, 1:2].view((1, self.num_anchors, 1, 1))
+        
+        
+    def arsinh(self, x):
+        return torch.ln(1 + torch.sqrt(1 + x ** 2))
 
     def forward(self, x, targets=None, loss_mode = "unmodified", img_dim=None):
 
@@ -196,8 +200,8 @@ class YOLOLayer(nn.Module):
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
                 print(1 + w[obj_mask])
-                loss_w = self.mse_loss(torch.log2(1 + w[obj_mask]), torch.log2(1 + tw[obj_mask]))
-                loss_h = self.mse_loss(torch.log2(1 + h[obj_mask]), torch.log2(1 + th[obj_mask]))
+                loss_w = self.mse_loss(self.arsinh(w[obj_mask]), self.arsinh(tw[obj_mask]))
+                loss_h = self.mse_loss(self.arsinh(h[obj_mask]), self.arsinh(th[obj_mask]))
                 loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
                 loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
                 loss_conf = self.obj_scale * loss_conf_obj + 1.25 * self.noobj_scale * loss_conf_noobj
