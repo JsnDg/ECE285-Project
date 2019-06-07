@@ -136,7 +136,7 @@ class YOLOLayer(nn.Module):
         
         
     def arsinh(self, x):
-        return torch.ln(1 + torch.sqrt(1 + x ** 2))
+        return torch.log(1 + torch.sqrt(1 + x ** 2))
 
     def forward(self, x, targets=None, loss_mode = "unmodified", img_dim=None):
 
