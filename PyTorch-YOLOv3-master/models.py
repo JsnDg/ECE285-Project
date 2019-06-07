@@ -199,7 +199,6 @@ class YOLOLayer(nn.Module):
                 eps = 1e-18
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
                 loss_y = self.mse_loss(y[obj_mask], ty[obj_mask])
-                print(1 + w[obj_mask])
                 loss_w = self.mse_loss(self.arsinh(w[obj_mask]), self.arsinh(tw[obj_mask]))
                 loss_h = self.mse_loss(self.arsinh(h[obj_mask]), self.arsinh(th[obj_mask]))
                 loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
