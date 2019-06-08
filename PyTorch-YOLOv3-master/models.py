@@ -203,7 +203,7 @@ class YOLOLayer(nn.Module):
                 loss_h = self.mse_loss(self.arsinh(h[obj_mask]), self.arsinh(th[obj_mask]))
                 loss_conf_obj = self.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
                 loss_conf_noobj = self.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
-                loss_conf = 1.2 * self.obj_scale * loss_conf_obj + 0.8 * self.noobj_scale * loss_conf_noobj
+                loss_conf = self.obj_scale * loss_conf_obj + 0.75 * self.noobj_scale * loss_conf_noobj
                 loss_cls = self.bce_loss(pred_cls[obj_mask], tcls[obj_mask])
             elif loss_mode is "unmodified" :
                 loss_x = self.mse_loss(x[obj_mask], tx[obj_mask])
